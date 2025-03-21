@@ -1,3 +1,1 @@
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("Hello Gravity!");
-});
+console.log("Hello Gravity!");
