@@ -10,7 +10,7 @@ function init() {
 
 function logLoadMessage() {
     const
-    isLocal = window.location.protocol === 'http' || 'https' ? true : false,
+    isLocal = window.location.protocol === 'http' || 'https' ? false : true,
     appUrl = isLocal ? 'http://127.0.0.1:8080' : 'https://yarwix.github.io/gravity';
     fetch(`${appUrl}/log-animation.svg`)
     .then(response => response.text())
