@@ -39,6 +39,8 @@ function initGravity() {
             this.offsetY = 0;
             this.velocityX = 0;
             this.velocityY = 0;
+            this.lastX = 0;
+            this.lastY = 0;
             this.gravity = 0.5;
             this.friction = 0.98;
             this.bounceFactor = 0.4;
@@ -48,8 +50,8 @@ function initGravity() {
         }
     
         init() {
-            this.element.style.position = "fixed"; // 🔥 Fix: Use "fixed" instead of "absolute"
-
+            this.element.style.position = "fixed"; // Keep elements in viewport
+    
             // Start from default position in HTML
             let rect = this.element.getBoundingClientRect();
             this.element.style.left = `${rect.left}px`;
@@ -77,6 +79,9 @@ function initGravity() {
     
             this.velocityX = 0;
             this.velocityY = 0;
+    
+            this.lastX = clientX;
+            this.lastY = clientY;
         }
     
         drag(event) {
@@ -89,13 +94,22 @@ function initGravity() {
             let newX = clientX - this.offsetX;
             let newY = clientY - this.offsetY;
     
+            // Keep within viewport
             newX = Math.max(0, Math.min(newX, window.innerWidth - this.element.clientWidth));
             newY = Math.max(0, Math.min(newY, window.innerHeight - this.element.clientHeight));
     
             [newX, newY] = this.resolveCollisions(newX, newY);
     
+            // Update element position
             this.element.style.left = `${newX}px`;
             this.element.style.top = `${newY}px`;
+    
+            // Calculate velocity based on movement speed
+            this.velocityX = (clientX - this.lastX) * 0.5;
+            this.velocityY = (clientY - this.lastY) * 0.5;
+    
+            this.lastX = clientX;
+            this.lastY = clientY;
         }
     
         endDrag() {
@@ -109,8 +123,8 @@ function initGravity() {
             let newX = rect.left + this.velocityX;
             let newY = rect.top + this.velocityY;
     
-            this.velocityY += this.gravity;
-            this.velocityX *= this.friction;
+            this.velocityY += this.gravity; // Gravity effect
+            this.velocityX *= this.friction; // Slow down over time
             this.velocityY *= this.friction;
     
             [newX, newY] = this.resolveCollisions(newX, newY);
