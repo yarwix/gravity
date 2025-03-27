@@ -49,8 +49,11 @@ function initGravity() {
     
         init() {
             this.element.style.position = "fixed"; // 🔥 Fix: Use "fixed" instead of "absolute"
-            this.element.style.left = `${Math.random() * (window.innerWidth - this.element.clientWidth)}px`;
-            this.element.style.top = `${Math.random() * (window.innerHeight - this.element.clientHeight)}px`;
+
+            // Start from default position in HTML
+            let rect = this.element.getBoundingClientRect();
+            this.element.style.left = `${rect.left}px`;
+            this.element.style.top = `${rect.top}px`;
     
             this.element.addEventListener("mousedown", this.startDrag.bind(this));
             this.element.addEventListener("touchstart", this.startDrag.bind(this), { passive: false });
