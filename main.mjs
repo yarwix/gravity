@@ -31,27 +31,24 @@ function logLoadMessage() {
 
 function initGravity() {
     class GravityDraggable {
-        constructor(element) {
+        constructor(element, allElements) {
             this.element = element;
+            this.allElements = allElements;
             this.isDragging = false;
             this.offsetX = 0;
             this.offsetY = 0;
             this.velocityX = 0;
             this.velocityY = 0;
-            this.gravity = 0.4;
+            this.gravity = 0.5;
             this.friction = 0.98;
-            this.bounceFactor = 0.5;
-            this.minVelocity = 0.1; // Minimum velocity before stopping
-            this.restThreshold = 5; // Threshold for stopping bounce
-            this.animationFrame = null;
+            this.bounceFactor = 0.4;
+            this.restThreshold = 0.5;
     
             this.init();
         }
     
         init() {
             this.element.style.position = "absolute";
-    
-            // Random initial position within viewport
             this.element.style.left = `${Math.random() * (window.innerWidth - this.element.clientWidth)}px`;
             this.element.style.top = `${Math.random() * (window.innerHeight - this.element.clientHeight)}px`;
     
@@ -63,13 +60,10 @@ function initGravity() {
     
             window.addEventListener("mouseup", this.endDrag.bind(this));
             window.addEventListener("touchend", this.endDrag.bind(this));
-    
-            this.applyPhysics(); // Start physics simulation on load
         }
     
         startDrag(event) {
             this.isDragging = true;
-            cancelAnimationFrame(this.animationFrame);
     
             let clientX = event.clientX || event.touches[0].clientX;
             let clientY = event.clientY || event.touches[0].clientY;
@@ -79,7 +73,7 @@ function initGravity() {
             this.offsetY = clientY - rect.top;
     
             this.velocityX = 0;
-            this.velocityY = 0; // Reset velocity when grabbed
+            this.velocityY = 0;
         }
     
         drag(event) {
@@ -92,21 +86,17 @@ function initGravity() {
             let newX = clientX - this.offsetX;
             let newY = clientY - this.offsetY;
     
-            // Keep inside viewport
             newX = Math.max(0, Math.min(newX, window.innerWidth - this.element.clientWidth));
             newY = Math.max(0, Math.min(newY, window.innerHeight - this.element.clientHeight));
     
-            this.velocityX = (newX - this.element.offsetLeft) * 0.6;
-            this.velocityY = (newY - this.element.offsetTop) * 0.6;
+            [newX, newY] = this.resolveCollisions(newX, newY);
     
             this.element.style.left = `${newX}px`;
             this.element.style.top = `${newY}px`;
         }
     
         endDrag() {
-            if (!this.isDragging) return;
             this.isDragging = false;
-            this.applyPhysics();
         }
     
         applyPhysics() {
@@ -116,52 +106,83 @@ function initGravity() {
             let newX = rect.left + this.velocityX;
             let newY = rect.top + this.velocityY;
     
-            this.velocityY += this.gravity; // Gravity effect
-            this.velocityX *= this.friction; // Air resistance
+            this.velocityY += this.gravity;
+            this.velocityX *= this.friction;
             this.velocityY *= this.friction;
     
-            // Ensure elements keep falling until they land
-            if (newY + rect.height < window.innerHeight && Math.abs(this.velocityY) < this.restThreshold) {
-                this.velocityY += this.gravity * 0.5; // Small push to prevent mid-air sticking
-            }
+            [newX, newY] = this.resolveCollisions(newX, newY);
     
-            // Ground collision detection
             if (newY + rect.height >= window.innerHeight) {
                 newY = window.innerHeight - rect.height;
-    
-                // If velocity is small, stop completely (prevents jittering)
                 if (Math.abs(this.velocityY) < this.restThreshold) {
                     this.velocityY = 0;
-                    this.velocityX *= 0.8; // Apply some friction to stop sliding
                 } else {
-                    this.velocityY *= -this.bounceFactor; // Bounce effect
+                    this.velocityY *= -this.bounceFactor;
                 }
             }
-    
-            // Ensure objects don’t stop in mid-air
-            if (newY + rect.height < window.innerHeight && Math.abs(this.velocityY) < this.minVelocity) {
-                this.velocityY += this.gravity * 1.5; // Apply extra downward force
-            }
-    
-            // Left and right boundary collision
-            if (newX < 0) {
+            if (newX <= 0) {
                 newX = 0;
                 this.velocityX *= -this.bounceFactor;
-            } else if (newX + rect.width > window.innerWidth) {
+            }
+            if (newX + rect.width >= window.innerWidth) {
                 newX = window.innerWidth - rect.width;
                 this.velocityX *= -this.bounceFactor;
             }
     
             this.element.style.left = `${newX}px`;
             this.element.style.top = `${newY}px`;
+        }
     
-            // Stop the animation if the movement is minimal
-            if (Math.abs(this.velocityX) > this.minVelocity || Math.abs(this.velocityY) > this.minVelocity) {
-                this.animationFrame = requestAnimationFrame(this.applyPhysics.bind(this));
-            }
+        resolveCollisions(newX, newY) {
+            let adjustedX = newX;
+            let adjustedY = newY;
+    
+            this.allElements.forEach(other => {
+                if (other === this.element) return;
+    
+                let rect1 = { left: adjustedX, top: adjustedY, width: this.element.clientWidth, height: this.element.clientHeight };
+                let rect2 = other.getBoundingClientRect();
+    
+                if (this.isColliding(rect1, rect2)) {
+                    let dx = (rect1.left + rect1.width / 2) - (rect2.left + rect2.width / 2);
+                    let dy = (rect1.top + rect1.height / 2) - (rect2.top + rect2.height / 2);
+                    let overlapX = Math.abs(rect1.left - rect2.left) < rect1.width ? (rect1.width - Math.abs(rect1.left - rect2.left)) / 2 : 0;
+                    let overlapY = Math.abs(rect1.top - rect2.top) < rect1.height ? (rect1.height - Math.abs(rect1.top - rect2.top)) / 2 : 0;
+    
+                    if (overlapX > 0 && overlapY > 0) {
+                        if (overlapX > overlapY) {
+                            adjustedY += dy > 0 ? overlapY : -overlapY;
+                            this.velocityY *= -this.bounceFactor;
+                        } else {
+                            adjustedX += dx > 0 ? overlapX : -overlapX;
+                            this.velocityX *= -this.bounceFactor;
+                        }
+                    }
+                }
+            });
+    
+            return [adjustedX, adjustedY];
+        }
+    
+        isColliding(rect1, rect2) {
+            return !(rect1.top + rect1.height <= rect2.top ||
+                rect1.top >= rect2.top + rect2.height ||
+                rect1.left + rect1.width <= rect2.left ||
+                rect1.left >= rect2.left + rect2.width);
         }
     }
     
-    // Apply physics to all elements with class "gravity"
-    document.querySelectorAll(".gravity").forEach(el => new GravityDraggable(el));
+    // Apply gravity globally to all elements
+    const elements = document.querySelectorAll(".gravity");
+    const objects = [];
+    
+    elements.forEach(el => objects.push(new GravityDraggable(el, elements)));
+    
+    function physicsLoop() {
+        objects.forEach(obj => obj.applyPhysics());
+        requestAnimationFrame(physicsLoop);
+    }
+    
+    // Start the physics loop
+    physicsLoop();
 }
