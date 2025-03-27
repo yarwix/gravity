@@ -48,7 +48,7 @@ function initGravity() {
         }
     
         init() {
-            this.element.style.position = "absolute";
+            this.element.style.position = "fixed"; // 🔥 Fix: Use "fixed" instead of "absolute"
             this.element.style.left = `${Math.random() * (window.innerWidth - this.element.clientWidth)}px`;
             this.element.style.top = `${Math.random() * (window.innerHeight - this.element.clientHeight)}px`;
     
